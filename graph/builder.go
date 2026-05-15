@@ -97,10 +97,8 @@ func (g *DependencyGraph) resolveTargets(typeName string, beans map[string]*pars
 		if g.edges[typeName] == nil {
 			g.edges[typeName] = make(map[string]bool)
 		}
-		return []string{typeName}
 	}
-
-	return nil
+	return []string{typeName}
 }
 
 // addEdge adds a directed edge from -> to.

@@ -12,31 +12,29 @@ import (
 // PrintResults outputs the analysis results to stdout.
 func PrintResults(cycles []graph.Cycle, refIssues []parser.ReferenceIssue) {
 	if len(cycles) == 0 && len(refIssues) == 0 {
-		fmt.Println("No issues found.")
+		fmt.Println("未发现问题。")
 		return
 	}
 
 	if len(cycles) > 0 {
-		fmt.Printf("\n=== Circular Dependencies (%d found) ===\n\n", len(cycles))
+		fmt.Printf("\n=== 循环依赖（共 %d 处）===\n\n", len(cycles))
 		for i, cycle := range cycles {
-			fmt.Printf("Cycle %d:\n", i+1)
-			for _, edge := range cycle.Edges {
-				fmt.Printf("  %s\n", edge)
-			}
+			fmt.Printf("循环 %d:\n", i+1)
+			fmt.Printf("  %s\n", buildChain(cycle.Edges))
 			fmt.Println()
 		}
 	}
 
 	if len(refIssues) > 0 {
-		fmt.Printf("=== Improper @Reference Usage (%d found) ===\n\n", len(refIssues))
+		fmt.Printf("=== @Reference 使用不当（共 %d 处）===\n\n", len(refIssues))
 		for i, issue := range refIssues {
-			fmt.Printf("Issue %d:\n", i+1)
-			fmt.Printf("  Location: %s\n", relativePath(issue.FilePath, issue.Line))
-			fmt.Printf("  Class:    %s\n", issue.ClassName)
-			fmt.Printf("  References Dubbo interface: %s\n", issue.ReferencedIface)
-			fmt.Printf("  Which is locally implemented by: %s\n", issue.LocalImpl)
-			fmt.Printf("  Problem:  @Reference references a service provided by this same application.\n")
-			fmt.Printf("            This introduces unnecessary RPC overhead. Use local injection instead.\n")
+			fmt.Printf("问题 %d:\n", i+1)
+			fmt.Printf("  位置:         %s\n", relativePath(issue.FilePath, issue.Line))
+			fmt.Printf("  类:           %s\n", issue.ClassName)
+			fmt.Printf("  引用的 Dubbo 接口: %s\n", issue.ReferencedIface)
+			fmt.Printf("  该接口的本地实现:   %s\n", issue.LocalImpl)
+			fmt.Printf("  说明:  @Reference 引用了本应用自身提供的 Dubbo 服务。\n")
+			fmt.Printf("         这会引入不必要的 RPC 开销，应改为本地注入。\n")
 			fmt.Println()
 		}
 	}
@@ -44,7 +42,7 @@ func PrintResults(cycles []graph.Cycle, refIssues []parser.ReferenceIssue) {
 
 // PrintBeanSummary outputs parsed bean information for debugging.
 func PrintBeanSummary(beans map[string]*parser.BeanInfo) {
-	fmt.Printf("Parsed %d beans:\n\n", len(beans))
+	fmt.Printf("解析到 %d 个 Bean:\n\n", len(beans))
 	for name, bean := range beans {
 		tags := []string{}
 		if bean.IsSpringBean {
@@ -56,7 +54,7 @@ func PrintBeanSummary(beans map[string]*parser.BeanInfo) {
 
 		fmt.Printf("  %s [%s]\n", name, strings.Join(tags, ", "))
 		if len(bean.Interfaces) > 0 {
-			fmt.Printf("    Implements: %v\n", bean.Interfaces)
+			fmt.Printf("    实现接口: %v\n", bean.Interfaces)
 		}
 		if len(bean.Dependencies) > 0 {
 			for _, dep := range bean.Dependencies {
@@ -66,13 +64,30 @@ func PrintBeanSummary(beans map[string]*parser.BeanInfo) {
 				}
 				fmt.Printf("    %s -> %s", annotation, dep.TypeName)
 				if dep.Line > 0 {
-					fmt.Printf(" (line %d)", dep.Line)
+					fmt.Printf(" (第 %d 行)", dep.Line)
 				}
 				fmt.Println()
 			}
 		}
 		fmt.Println()
 	}
+}
+
+// buildChain joins edges into a single chain: A --[Resource]--> B --[Autowired]--> C --[注入]--> A
+func buildChain(edges []string) string {
+	if len(edges) == 0 {
+		return ""
+	}
+	// First edge "A --[Resource]--> B" → parts = ["A", "Resource]--> B"]
+	parts := strings.SplitN(edges[0], " --[", 2)
+	chain := parts[0]
+	for _, edge := range edges {
+		parts := strings.SplitN(edge, " --[", 2)
+		if len(parts) == 2 {
+			chain += " --[" + parts[1]
+		}
+	}
+	return chain
 }
 
 func relativePath(filePath string, line int) string {

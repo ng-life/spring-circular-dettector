@@ -15,12 +15,12 @@ func main() {
 	verbose := flag.Bool("v", false, "Verbose: print parsed bean information")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s -path <java-project-src-dir> [-v]\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "\nSpring Circular Dependency & Dubbo @Reference Checker\n")
-		fmt.Fprintf(os.Stderr, "\nChecks:\n")
-		fmt.Fprintf(os.Stderr, "  1. Circular dependencies (including @Reference chains)\n")
-		fmt.Fprintf(os.Stderr, "  2. Improper @Reference usage (referencing local Dubbo services)\n")
-		fmt.Fprintf(os.Stderr, "\nOptions:\n")
+		fmt.Fprintf(os.Stderr, "用法: %s -path <java项目源码目录> [-v]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "\nSpring 循环依赖 & Dubbo @Reference 检查工具\n")
+		fmt.Fprintf(os.Stderr, "\n检查项:\n")
+		fmt.Fprintf(os.Stderr, "  1. 循环依赖（包括 @Reference 链）\n")
+		fmt.Fprintf(os.Stderr, "  2. @Reference 使用不当（引用了本地 Dubbo 服务）\n")
+		fmt.Fprintf(os.Stderr, "\n参数:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -33,31 +33,31 @@ func main() {
 	// Verify path exists
 	info, err := os.Stat(*path)
 	if err != nil {
-		log.Fatalf("Path does not exist: %s", *path)
+		log.Fatalf("路径不存在: %s", *path)
 	}
 	if !info.IsDir() {
-		log.Fatalf("Path is not a directory: %s", *path)
+		log.Fatalf("路径不是目录: %s", *path)
 	}
 
-	fmt.Printf("Analyzing: %s\n\n", *path)
+	fmt.Printf("分析目录: %s\n\n", *path)
 
 	// Check circular dependencies
-	fmt.Println("Checking circular dependencies...")
+	fmt.Println("正在检查循环依赖...")
 	cycles, err := checker.CheckCircular(*path)
 	if err != nil {
-		log.Fatalf("Error checking circular dependencies: %v", err)
+		log.Fatalf("检查循环依赖失败: %v", err)
 	}
 
 	// Check improper @Reference usage
-	fmt.Println("Checking @Reference usage...")
+	fmt.Println("正在检查 @Reference 使用...")
 	refIssues, err := checker.CheckDubboReference(*path)
 	if err != nil {
-		log.Fatalf("Error checking @Reference usage: %v", err)
+		log.Fatalf("检查 @Reference 使用失败: %v", err)
 	}
 
 	if *verbose {
 		// Re-parse for verbose output (simple approach)
-		fmt.Println("\n=== Bean Summary ===")
+		fmt.Println("\n=== Bean 概览 ===")
 	}
 
 	report.PrintResults(cycles, refIssues)

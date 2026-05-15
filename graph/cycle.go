@@ -42,6 +42,9 @@ func dfs(node string, g *DependencyGraph, color map[string]int, parent map[strin
 			parent[neighbor] = node
 			dfs(neighbor, g, color, parent, cycles, seen)
 		} else if color[neighbor] == gray {
+			if node == neighbor {
+				continue // skip self-loop (bean injecting itself via interface)
+			}
 			// Found a back edge: node -> neighbor forms a cycle
 			// Reconstruct the cycle path
 			cyclePath := reconstructPath(node, neighbor, parent)
@@ -62,15 +65,18 @@ func dfs(node string, g *DependencyGraph, color map[string]int, parent map[strin
 }
 
 // reconstructPath builds the cycle path from the back edge.
+// The back edge is from -> to, where 'to' is an ancestor of 'from' in the DFS tree.
+// Returns a path starting and ending with 'to': [to, ..., from, to]
 func reconstructPath(from, to string, parent map[string]string) []string {
-	path := []string{to}
-	// Walk from "from" up to "to" via parent pointers
+	// Walk from "from" up the DFS tree to "to" (exclusive)
+	var path []string
 	for cur := from; cur != to; cur = parent[cur] {
 		path = append([]string{cur}, path...)
 	}
-	// Complete the cycle by adding "to" at the end
-	path = append(path, to)
-	return path
+	// Build full cycle: to -> ... -> from -> to
+	fullPath := append([]string{to}, path...)
+	fullPath = append(fullPath, to)
+	return fullPath
 }
 
 // canonicalPath creates a canonical representation of a cycle for deduplication.
@@ -110,7 +116,7 @@ func buildEdgeDescriptions(path []string, g *DependencyGraph) []string {
 		key := from + "->" + to
 		info := g.edgeInfo[key]
 		if info == "" {
-			info = "injects"
+			info = "注入"
 		}
 		edges = append(edges, from+" --["+info+"]--> "+to)
 	}
